@@ -40,9 +40,9 @@
 /* Basic information exposed publicly */
 #define SMEXT_CONF_NAME			"CollisionHook"
 #define SMEXT_CONF_DESCRIPTION	"Hook on entity collision"
-#define SMEXT_CONF_VERSION		"0.2"
-#define SMEXT_CONF_AUTHOR		"VoiDeD"
-#define SMEXT_CONF_URL			"http://saxtonhell.com"
+#define SMEXT_CONF_VERSION		"0.4"
+#define SMEXT_CONF_AUTHOR		"VoiDeD, A1m`"
+#define SMEXT_CONF_URL			"https://github.com/L4D-Community/Collisionhook"
 #define SMEXT_CONF_LOGTAG		"CLHOOK"
 #define SMEXT_CONF_LICENSE		"GPL"
 #define SMEXT_CONF_DATESTRING	__DATE__
