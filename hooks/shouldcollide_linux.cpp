@@ -2,6 +2,12 @@
 #include "sourcehook.h"
 #include "collisionhooks.h"
 
+// Fix hook leaks, affecting FPS over map restarts (Adrianilloo commit)
+// https://github.com/Adrianilloo/Collisionhook/blob/master/extension.cpp
+// 
+// Functions 'CreateEnvironment' and 'SetCollisionSolver' are executed at map start each time, so this can happen.
+// Pointer 'pSolver' passed to function 'SetCollisionSolver' is global and this pointer never changes, so we don't need to make a new hook 'ShouldCollide' every map.
+
 SH_DECL_HOOK0(IPhysics, CreateEnvironment, SH_NOATTRIB, 0, IPhysicsEnvironment*);
 SH_DECL_HOOK1_void(IPhysicsEnvironment, SetCollisionSolver, SH_NOATTRIB, 0, IPhysicsCollisionSolver*);
 SH_DECL_HOOK4(IPhysicsCollisionSolver, ShouldCollide, SH_NOATTRIB, 0, int, IPhysicsObject*, IPhysicsObject*, void*, void*);
@@ -10,15 +16,18 @@ IPhysicsEnvironment* CShouldCollideHook::CreateEnvironment()
 {
 	// in order to hook IPhysicsCollisionSolver::ShouldCollide, we need to know when a solver is installed
 	// in order to hook any installed solvers, we need to hook any created physics environments
-	IPhysicsEnvironment* pEnvironment = SH_CALL(g_pPhysics, &IPhysics::CreateEnvironment)();
+	
+	IPhysicsEnvironment* pEnvironment = META_RESULT_ORIG_RET(IPhysicsEnvironment*);
 
 	if (!pEnvironment)
 	{
 		RETURN_META_VALUE(MRES_SUPERCEDE, pEnvironment); // just in case
 	}
 
-	// hook so we know when a solver is installed
-	SH_ADD_HOOK(IPhysicsEnvironment, SetCollisionSolver, pEnvironment, SH_MEMBER(this, &CShouldCollideHook::SetCollisionSolver), false);
+	// Hook globally so we know when any solver is installed
+	g_iSetCollisionSolverHookId = SH_ADD_VPHOOK(IPhysicsEnvironment, SetCollisionSolver, pEnvironment, SH_MEMBER(this, &CShouldCollideHook::SetCollisionSolver), true);
+
+	SH_REMOVE_HOOK(IPhysics, CreateEnvironment, g_pPhysics, SH_MEMBER(this, &CShouldCollideHook::CreateEnvironment), true); // No longer needed
 
 	RETURN_META_VALUE(MRES_SUPERCEDE, pEnvironment);
 }
@@ -30,8 +39,12 @@ void CShouldCollideHook::SetCollisionSolver(IPhysicsCollisionSolver* pSolver)
 		RETURN_META(MRES_IGNORED); // this shouldn't happen, but knowing valve...
 	}
 
-	// the game is installing a solver, hook the func we want
-	SH_ADD_HOOK(IPhysicsCollisionSolver, ShouldCollide, pSolver, SH_MEMBER(this, &CShouldCollideHook::VPhysics_ShouldCollide), false);
+	// The game installed a solver, globally hook ShouldCollide
+	g_iShouldCollideHookId = SH_ADD_VPHOOK(IPhysicsCollisionSolver, ShouldCollide, pSolver, SH_MEMBER(this, &CShouldCollideHook::VPhysics_ShouldCollide), false);
+
+	SH_REMOVE_HOOK_ID(g_iSetCollisionSolverHookId); // No longer needed
+
+	g_iSetCollisionSolverHookId = 0;
 
 	RETURN_META(MRES_IGNORED);
 }
@@ -82,14 +95,20 @@ bool CShouldCollideHook::EnableHook(char* error, size_t maxlen, ISmmAPI* ismm)
 {
 	GET_V_IFACE_CURRENT(GetPhysicsFactory, g_pPhysics, IPhysics, VPHYSICS_INTERFACE_VERSION);
 
-	SH_ADD_HOOK(IPhysics, CreateEnvironment, g_pPhysics, SH_MEMBER(this, &CShouldCollideHook::CreateEnvironment), false);
+	SH_ADD_HOOK(IPhysics, CreateEnvironment, g_pPhysics, SH_MEMBER(this, &CShouldCollideHook::CreateEnvironment), true);
 
 	return true;
 }
 
 void CShouldCollideHook::DisableHook()
 {
-	SH_REMOVE_HOOK(IPhysics, CreateEnvironment, g_pPhysics, SH_MEMBER(this, &CShouldCollideHook::CreateEnvironment), false);
+	SH_REMOVE_HOOK(IPhysics, CreateEnvironment, g_pPhysics, SH_MEMBER(this, &CShouldCollideHook::CreateEnvironment), true);
+
+	SH_REMOVE_HOOK_ID(g_iSetCollisionSolverHookId);
+	SH_REMOVE_HOOK_ID(g_iShouldCollideHookId);
+
+	g_iSetCollisionSolverHookId = 0;
+	g_iShouldCollideHookId = 0;
 
 	g_pPhysics = NULL;
 }

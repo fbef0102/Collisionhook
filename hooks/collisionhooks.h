@@ -24,6 +24,10 @@ private:
 	int VPhysics_ShouldCollide(IPhysicsObject* pObj1, IPhysicsObject* pObj2, void* pGameData1, void* pGameData2);
 
 	IPhysics* g_pPhysics = NULL;
+
+	int g_iSetCollisionSolverHookId = 0;
+
+	int g_iShouldCollideHookId = 0;
 #else
 	CDetour* g_pShouldCollideDetour = NULL;
 #endif
