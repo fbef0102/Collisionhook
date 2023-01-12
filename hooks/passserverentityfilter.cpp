@@ -7,6 +7,7 @@ DETOUR_DECL_STATIC2(PassServerEntityFilterFunc, bool, const IHandleEntity*, pTou
 	// Can't call into SourcePawn off thread (left 4 dead 2 - windows crash fix).
 	// This function is called not only from the main thread, 
 	// which causes a server crash due to the fact that the sourcepawn does not support multithreading.
+	// I don't know about other games.
 	if (!ThreadInMainThread())
 	{
 		return DETOUR_STATIC_CALL(PassServerEntityFilterFunc)(pTouch, pPass);

@@ -7,20 +7,11 @@ project = Extension.HL2Project(builder, projectName + '.ext')
 project.sources += [
     'extension.cpp',
     'hooks/passserverentityfilter.cpp',
+    'hooks/shouldcollide.cpp',
     os.path.join(Extension.sm_root, 'public', 'smsdk_ext.cpp'),
     os.path.join(Extension.sm_root, 'public', 'CDetour', 'detours.cpp'),
     os.path.join(Extension.sm_root, 'public', 'asm', 'asm.c'),
 ]
-
-if builder.target_platform == 'windows':
-    project.sources += [
-         'hooks/shouldcollide_win.cpp',
-    ]
-else:
-    assert builder.target_platform == 'linux'
-    project.sources += [
-        'hooks/shouldcollide_linux.cpp',
-    ]
 
 # sm1.10+
 libudis_folder = os.path.join(Extension.sm_root, 'public', 'libudis86')

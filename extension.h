@@ -43,7 +43,7 @@ public:
 	   */
 	   //virtual bool QueryRunning(char *error, size_t maxlength);
 public:
-#if defined SMEXT_CONF_METAMOD && defined PLATFORM_LINUX
+#if defined SMEXT_CONF_METAMOD
 	/**
 	 * @brief Called when Metamod is attached, before the extension version is called.
 	 *
@@ -90,7 +90,7 @@ extern IForward* g_pCollisionFwd;
 extern IForward* g_pPassFwd;
 
 #ifdef SMEXT_ENABLE_ROOTCONSOLEMENU
-extern IRootConsole* rootconsole;
+	extern IRootConsole* rootconsole;
 #endif
 
 #endif // _INCLUDE_COLLISIONHOOK_EXTENSION_H_

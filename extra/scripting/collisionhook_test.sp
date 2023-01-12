@@ -15,8 +15,8 @@
 #define DEBUG_MESSAGE_SERVER_CONSOLE	(1 << 1)
 
 ConVar
-	g_hDebugType = null,
-	g_hDebugLevel = null;
+	g_hDebugFlags = null,
+	g_hDebugMsgType = null;
 
 public void OnPluginStart()
 {
@@ -26,13 +26,13 @@ public void OnPluginStart()
 	Format(sDescription, sizeof(sDescription), "Show debug messages for: %d - disable messages, %d - ShouldCollide, %d - PassFilter, %d - for all.", \
 											DEBUG_FLAG_NONE, DEBUG_FLAG_SHOULDCOLLIDE, DEBUG_FLAG_PASSFILTER, DEBUG_FLAGS_ALL);
 	
-	g_hDebugType = CreateConVar("ch_debug_flags", sValue, sDescription, _, true, float(DEBUG_FLAG_NONE), true, float(DEBUG_FLAGS_ALL));
+	g_hDebugFlags = CreateConVar("ch_debug_flags", sValue, sDescription, _, true, float(DEBUG_FLAG_NONE), true, float(DEBUG_FLAGS_ALL));
 
 	IntToString(DEBUG_MESSAGE_SERVER_CONSOLE, sValue, sizeof(sValue));
 	Format(sDescription, sizeof(sDescription), "Where to show debug messages: %d - in the chat for players, %d - in the server console.", \
 											DEBUG_MESSAGE_CHAT, DEBUG_MESSAGE_SERVER_CONSOLE);
 
-	g_hDebugLevel = CreateConVar("ch_debug_level", sValue, sDescription, _, true, float(DEBUG_MESSAGE_CHAT), true, float(DEBUG_MESSAGE_SERVER_CONSOLE));
+	g_hDebugMsgType = CreateConVar("ch_debug_msg_type", sValue, sDescription, _, true, float(DEBUG_MESSAGE_CHAT), true, float(DEBUG_MESSAGE_SERVER_CONSOLE));
 }
 
 public Action CH_ShouldCollide(int iEntity1, int iEntity2, bool &bResult)
@@ -51,7 +51,7 @@ public Action CH_PassFilter(int iEntity1, int iEntity2, bool &bResult)
 
 void DebugMessage(int iDebugFlag, const char[] sFuncName, int iEntity1, int iEntity2, bool bResult)
 {
-	if (!(g_hDebugType.IntValue & iDebugFlag)) {
+	if (!(g_hDebugFlags.IntValue & iDebugFlag)) {
 		return;
 	}
 
@@ -59,7 +59,7 @@ void DebugMessage(int iDebugFlag, const char[] sFuncName, int iEntity1, int iEnt
 	GetEntityNameIsValid(iEntity1, sEntityName1, sizeof(sEntityName1));
 	GetEntityNameIsValid(iEntity2, sEntityName2, sizeof(sEntityName2));
 
-	if (g_hDebugLevel.IntValue & DEBUG_MESSAGE_CHAT) {
+	if (g_hDebugMsgType.IntValue & DEBUG_MESSAGE_CHAT) {
 		PrintToChatAll("[%s] iEntity1: %s (%d), iEntity2: %s (%d), result: %d!", sFuncName, sEntityName1, iEntity1, sEntityName2, iEntity2, bResult);
 
 		return;

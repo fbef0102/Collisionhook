@@ -1,3 +1,17 @@
+// Added commit:
+// Fix hook leaks, affecting FPS over map restarts (Adrianilloo commit)
+// https://github.com/Adrianilloo/Collisionhook/commit/567a221693b0f6ae223950847607e3a007beefa8
+// 
+// Functions 'CreateEnvironment' and 'SetCollisionSolver' are executed at map start each time, so this can happen.
+// Pointer 'pSolver' passed to function 'SetCollisionSolver' is global and this pointer never changes, so we don't need to make a new hook 'ShouldCollide' every map.
+//
+// Fixed crash #1 in game left4dead2 on windows, lthough Linux should also have a crash, but the stack never broke there.
+// After update 'The Last Stand' in 'CollisionEvent::ShouldCollide' added 2 new parameters.
+//
+// Fixed crash #2 in game left4dead2 on windows.
+// The PassServerEntityFilter function is not only called from the main thread, which causes a crash in the sourcepawn VM.
+// Of course this will not work so well, some collision cases may not be passed to the plugin.
+
 #include "extension.h"
 #include "hooks/collisionhooks.h"
 
@@ -28,13 +42,6 @@ bool CollisionHook::SDK_OnLoad(char* error, size_t maxlength, bool late)
 		return false;
 	}
 
-#ifdef PLATFORM_WINDOWS
-	if (!g_pShouldCollideHook.EnableHook(error, maxlength))
-	{
-		return false;
-	}
-#endif
-
 	sharesys->RegisterLibrary(myself, "collisionhook");
 
 	g_pCollisionFwd = forwards->CreateForward("CH_ShouldCollide", ET_Hook, 3, NULL, Param_Cell, Param_Cell, Param_CellByRef);
@@ -47,17 +54,12 @@ void CollisionHook::SDK_OnUnload()
 {
 	g_pPassServerEntityFilterHook.DisableHook();
 
-#ifdef PLATFORM_WINDOWS
-	g_pShouldCollideHook.DisableHook();
-#endif
-
 	forwards->ReleaseForward(g_pCollisionFwd);
 	forwards->ReleaseForward(g_pPassFwd);
 
 	gameconfs->CloseGameConfigFile(g_pGameConf);
 }
 
-#ifdef PLATFORM_LINUX
 bool CollisionHook::SDK_OnMetamodLoad(ISmmAPI* ismm, char* error, size_t maxlen, bool late)
 {
 	if (!g_pShouldCollideHook.EnableHook(error, maxlen, ismm))
@@ -74,4 +76,3 @@ bool CollisionHook::SDK_OnMetamodUnload(char* error, size_t maxlength)
 
 	return true;
 }
-#endif

@@ -2,15 +2,15 @@
 #include "sourcehook.h"
 #include "collisionhooks.h"
 
-// Fix hook leaks, affecting FPS over map restarts (Adrianilloo commit)
-// https://github.com/Adrianilloo/Collisionhook/blob/master/extension.cpp
-// 
-// Functions 'CreateEnvironment' and 'SetCollisionSolver' are executed at map start each time, so this can happen.
-// Pointer 'pSolver' passed to function 'SetCollisionSolver' is global and this pointer never changes, so we don't need to make a new hook 'ShouldCollide' every map.
-
 SH_DECL_HOOK0(IPhysics, CreateEnvironment, SH_NOATTRIB, 0, IPhysicsEnvironment*);
 SH_DECL_HOOK1_void(IPhysicsEnvironment, SetCollisionSolver, SH_NOATTRIB, 0, IPhysicsCollisionSolver*);
-SH_DECL_HOOK4(IPhysicsCollisionSolver, ShouldCollide, SH_NOATTRIB, 0, int, IPhysicsObject*, IPhysicsObject*, void*, void*);
+
+#if SOURCE_ENGINE != SE_LEFT4DEAD2
+	SH_DECL_HOOK4(IPhysicsCollisionSolver, ShouldCollide, SH_NOATTRIB, 0, int, IPhysicsObject*, IPhysicsObject*, void*, void*);
+#else
+	SH_DECL_HOOK6(IPhysicsCollisionSolver, ShouldCollide, SH_NOATTRIB, 0, int, IPhysicsObject*, IPhysicsObject*, void*, void*, \
+					const PhysicsCollisionRulesCache_t&, const PhysicsCollisionRulesCache_t&);
+#endif
 
 IPhysicsEnvironment* CShouldCollideHook::CreateEnvironment()
 {
@@ -49,7 +49,12 @@ void CShouldCollideHook::SetCollisionSolver(IPhysicsCollisionSolver* pSolver)
 	RETURN_META(MRES_IGNORED);
 }
 
+#if SOURCE_ENGINE != SE_LEFT4DEAD2
 int CShouldCollideHook::VPhysics_ShouldCollide(IPhysicsObject* pObj1, IPhysicsObject* pObj2, void* pGameData1, void* pGameData2)
+#else
+int CShouldCollideHook::VPhysics_ShouldCollide(IPhysicsObject* pObj1, IPhysicsObject* pObj2, void* pGameData1, void* pGameData2, \
+													const PhysicsCollisionRulesCache_t& objCache1, const PhysicsCollisionRulesCache_t& objCache2)
+#endif
 {
 	if (g_pCollisionFwd->GetFunctionCount() == 0)
 	{
