@@ -1,12 +1,14 @@
 // Added commit:
 // Fix hook leaks, affecting FPS over map restarts (Adrianilloo commit)
 // https://github.com/Adrianilloo/Collisionhook/commit/567a221693b0f6ae223950847607e3a007beefa8
-// 
+//
 // Functions 'CreateEnvironment' and 'SetCollisionSolver' are executed at map start each time, so this can happen.
 // Pointer 'pSolver' passed to function 'SetCollisionSolver' is global and this pointer never changes, so we don't need to make a new hook 'ShouldCollide' every map.
 //
-// Fixed crash #1 in game left4dead2 on windows, lthough Linux should also have a crash, but the stack never broke there.
+// Fixed crash #1 in game left4dead2 on windows, although linux should also have a crash, but the stack never broke there.
 // After update 'The Last Stand' in 'CollisionEvent::ShouldCollide' added 2 new parameters.
+// The class inherits interface 'IPhysicsCollisionSolver', so it must also have these parameters.
+// https://github.com/alliedmodders/hl2sdk/pull/123
 //
 // Fixed crash #2 in game left4dead2 on windows.
 // The PassServerEntityFilter function is not only called from the main thread, which causes a crash in the sourcepawn VM.
