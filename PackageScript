@@ -28,6 +28,11 @@ def CopyFiles(src, dest, files):
     source_path = os.path.join(builder.sourcePath, src, source_file)
     builder.AddCopy(source_path, dest_entry)
 
+# Autoload file
+CopyFiles('extra/extensions', 'addons/sourcemod/extensions',
+  [ 'collisionhook.autoload' ]
+)
+
 # Plugin files
 CopyFiles('extra/scripting', 'addons/sourcemod/scripting',
   [
@@ -48,8 +53,3 @@ CopyFiles('extra/gamedata', 'addons/sourcemod/gamedata',
 # Copy binaries.
 for cxx_task in Extension.extensions:
   builder.AddCopy(cxx_task.binary, folder_map['addons/sourcemod/extensions'])
-
-# Autoload file
-#CopyFiles('', 'addons/sourcemod/extensions',
-#  [ 'collisionhook.autoload' ]
-#)

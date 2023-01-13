@@ -41,7 +41,6 @@
 #define SMEXT_CONF_NAME			"CollisionHook"
 #define SMEXT_CONF_DESCRIPTION	"Hook on entity collision"
 #define SMEXT_CONF_VERSION		"0.7"
-#define SMEXT_CONF_AUTHOR		"VoiDeD, A1m`"
 #define SMEXT_CONF_AUTHOR		"VoiDeD, Adrianilloo, A1m`"
 #define SMEXT_CONF_URL			"https://github.com/L4D-Community/Collisionhook"
 #define SMEXT_CONF_LOGTAG		"CLHOOK"
