@@ -25,9 +25,9 @@ IPhysicsEnvironment* CShouldCollideHook::CreateEnvironment()
 	}
 
 	// Hook globally so we know when any solver is installed
-	g_iSetCollisionSolverHookId = SH_ADD_VPHOOK(IPhysicsEnvironment, SetCollisionSolver, pEnvironment, SH_MEMBER(this, &CShouldCollideHook::SetCollisionSolver), true);
+	m_iSetCollisionSolverHookId = SH_ADD_VPHOOK(IPhysicsEnvironment, SetCollisionSolver, pEnvironment, SH_MEMBER(this, &CShouldCollideHook::SetCollisionSolver), true);
 
-	SH_REMOVE_HOOK(IPhysics, CreateEnvironment, g_pPhysics, SH_MEMBER(this, &CShouldCollideHook::CreateEnvironment), true); // No longer needed
+	SH_REMOVE_HOOK(IPhysics, CreateEnvironment, m_pPhysics, SH_MEMBER(this, &CShouldCollideHook::CreateEnvironment), true); // No longer needed
 
 	RETURN_META_VALUE(MRES_SUPERCEDE, pEnvironment);
 }
@@ -39,12 +39,14 @@ void CShouldCollideHook::SetCollisionSolver(IPhysicsCollisionSolver* pSolver)
 		RETURN_META(MRES_IGNORED); // this shouldn't happen, but knowing valve...
 	}
 
-	// The game installed a solver, globally hook ShouldCollide
-	g_iShouldCollideHookId = SH_ADD_VPHOOK(IPhysicsCollisionSolver, ShouldCollide, pSolver, SH_MEMBER(this, &CShouldCollideHook::VPhysics_ShouldCollide), false);
+	m_pSolver = pSolver;
+	g_bExtLoading = false;
 
-	SH_REMOVE_HOOK_ID(g_iSetCollisionSolverHookId); // No longer needed
+	// We got a pointer to interface 'IPhysicsCollisionSolver', we try to activate the hook, if some plugin(s) require it.
+	EnableHook();
 
-	g_iSetCollisionSolverHookId = 0;
+	SH_REMOVE_HOOK_ID(m_iSetCollisionSolverHookId); // No longer needed
+	m_iSetCollisionSolverHookId = 0;
 
 	RETURN_META(MRES_IGNORED);
 }
@@ -56,11 +58,6 @@ int CShouldCollideHook::VPhysics_ShouldCollide(IPhysicsObject* pObj1, IPhysicsOb
 													const PhysicsCollisionRulesCache_t& objCache1, const PhysicsCollisionRulesCache_t& objCache2)
 #endif
 {
-	if (g_pCollisionFwd->GetFunctionCount() == 0)
-	{
-		RETURN_META_VALUE(MRES_IGNORED, 1); // no plugins are interested, let the game decide
-	}
-
 	if (pObj1 == pObj2)
 	{
 		RETURN_META_VALUE(MRES_IGNORED, 1); // self collisions aren't interesting
@@ -96,24 +93,96 @@ int CShouldCollideHook::VPhysics_ShouldCollide(IPhysicsObject* pObj1, IPhysicsOb
 	RETURN_META_VALUE(MRES_IGNORED, 0);
 }
 
-bool CShouldCollideHook::EnableHook(char* error, size_t maxlen, ISmmAPI* ismm)
+bool CShouldCollideHook::CreateHook(char* error, size_t maxlen, ISmmAPI* ismm)
 {
-	GET_V_IFACE_CURRENT(GetPhysicsFactory, g_pPhysics, IPhysics, VPHYSICS_INTERFACE_VERSION);
+	GET_V_IFACE_CURRENT(GetPhysicsFactory, m_pPhysics, IPhysics, VPHYSICS_INTERFACE_VERSION);
 
-	SH_ADD_HOOK(IPhysics, CreateEnvironment, g_pPhysics, SH_MEMBER(this, &CShouldCollideHook::CreateEnvironment), true);
+	SH_ADD_HOOK(IPhysics, CreateEnvironment, m_pPhysics, SH_MEMBER(this, &CShouldCollideHook::CreateEnvironment), true);
 
 	return true;
 }
 
+void CShouldCollideHook::DestroyHook()
+{
+	SH_REMOVE_HOOK(IPhysics, CreateEnvironment, m_pPhysics, SH_MEMBER(this, &CShouldCollideHook::CreateEnvironment), true);
+
+	SH_REMOVE_HOOK_ID(m_iSetCollisionSolverHookId);
+	SH_REMOVE_HOOK_ID(m_iShouldCollideHookId);
+
+	m_iSetCollisionSolverHookId = 0;
+	m_iShouldCollideHookId = 0;
+
+	m_pPhysics = NULL;
+}
+
+void CShouldCollideHook::EnableHook(bool bPluginLoad)
+{
+	if (IsHookEnabled())
+	{
+		return;
+	}
+
+	if (g_pCollisionFwd->GetFunctionCount() == 0)
+	{
+		return;
+	}
+
+	// This should not happen if the extension was loaded correctly before the map was loaded.
+	// It's better to add a check to avoid crashes.
+	if (m_pSolver == NULL)
+	{
+		ShowErrorMessage(bPluginLoad);
+
+		return;
+	}
+
+	// The game installed a solver, globally hook ShouldCollide
+	m_iShouldCollideHookId = SH_ADD_VPHOOK(IPhysicsCollisionSolver, ShouldCollide, m_pSolver, SH_MEMBER(this, &CShouldCollideHook::VPhysics_ShouldCollide), false);
+}
+
+void CShouldCollideHook::ShowErrorMessage(bool bPluginLoad)
+{
+	// Do not display an error message, the extension was not loaded too late, 
+	// pointer 'm_pSolver' has not yet been set because the map has not loaded yet.
+	if (g_bExtLoading && !g_bLateLoad)
+	{
+		return;
+	}
+
+	// Spam prevention.
+	// We will spam messages every time a new plugin is loaded.
+	if (bPluginLoad && m_bWarningMsgDisplayed)
+	{
+		return;
+	}
+
+	// This should not happen unless the function is done too early, e.g. from function 'SDK_OnMetamodLoad', while the extension is not fully loaded.
+	// In any case, it is better to add a check so that there are no crashes.
+	// We call this function only after the plugin is loaded.
+	if (g_pSM)
+	{
+		g_pSM->LogError(myself, "Pointer g_pSolver is null!");
+		g_pSM->LogError(myself, "Extension 'CollisionHooks' loaded too late?!");
+	}
+
+	Msg("Pointer g_pSolver is null!""\n");
+	Msg("Extension 'CollisionHooks' loaded too late?!""\n");
+
+	m_bWarningMsgDisplayed = true;
+}
+
 void CShouldCollideHook::DisableHook()
 {
-	SH_REMOVE_HOOK(IPhysics, CreateEnvironment, g_pPhysics, SH_MEMBER(this, &CShouldCollideHook::CreateEnvironment), true);
+	if (!IsHookEnabled())
+	{
+		return;
+	}
 
-	SH_REMOVE_HOOK_ID(g_iSetCollisionSolverHookId);
-	SH_REMOVE_HOOK_ID(g_iShouldCollideHookId);
+	if (g_pCollisionFwd->GetFunctionCount() > 0)
+	{
+		return;
+	}
 
-	g_iSetCollisionSolverHookId = 0;
-	g_iShouldCollideHookId = 0;
-
-	g_pPhysics = NULL;
+	SH_REMOVE_HOOK_ID(m_iShouldCollideHookId);
+	m_iShouldCollideHookId = 0;
 }

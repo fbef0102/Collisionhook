@@ -40,7 +40,7 @@
 /* Basic information exposed publicly */
 #define SMEXT_CONF_NAME			"CollisionHook"
 #define SMEXT_CONF_DESCRIPTION	"Hook on entity collision"
-#define SMEXT_CONF_VERSION		"0.7"
+#define SMEXT_CONF_VERSION		"0.9"
 #define SMEXT_CONF_AUTHOR		"VoiDeD, Adrianilloo, A1m`"
 #define SMEXT_CONF_URL			"https://github.com/L4D-Community/Collisionhook"
 #define SMEXT_CONF_LOGTAG		"CLHOOK"
@@ -71,7 +71,7 @@
 //#define SMEXT_ENABLE_LIBSYS
 //#define SMEXT_ENABLE_MENUS
 //#define SMEXT_ENABLE_ADTFACTORY
-//#define SMEXT_ENABLE_PLUGINSYS
+#define SMEXT_ENABLE_PLUGINSYS
 //#define SMEXT_ENABLE_ADMINSYS
 //#define SMEXT_ENABLE_TEXTPARSERS
 //#define SMEXT_ENABLE_USERMSGS

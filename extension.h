@@ -5,7 +5,9 @@
 #include "ihandleentity.h"
 
 class CollisionHook :
-	public SDKExtension
+	public SDKExtension,
+	public IPluginsListener,
+	public IConCommandBaseAccessor
 {
 public:
 	/**
@@ -42,6 +44,50 @@ public:
 	   * @return			True if working, false otherwise.
 	   */
 	   //virtual bool QueryRunning(char *error, size_t maxlength);
+	 
+	  /**
+	   * Called on server activation before plugins receive the OnServerLoad forward.
+	   * 
+	   * Parameters:
+	   * @param pEdictList	Edicts list.
+	   * @param edictCount	Number of edicts in the list.
+	   * @param clientMax	Maximum number of clients allowed in the server.
+	   */
+	 //virtual void OnCoreMapStart(edict_t* pEdictList, int edictCount, int clientMax);
+
+	 /**
+	  * Called on level shutdown.
+	  */
+	 virtual void OnCoreMapEnd();
+
+public: // IPluginsListener
+	/**
+	 * @brief Called when a plugin's required dependencies and natives have
+	 * been bound. Plugins at this phase may be in any state Failed or
+	 * lower. This is invoked immediately before OnPluginStart, and sometime
+	 * after OnPluginCreated.
+	 */
+	void OnPluginLoaded(IPlugin* plugin) override;
+
+	/**
+	 * @brief Called when a plugin is about to be unloaded. This is called for
+	 * any plugin for which OnPluginLoaded was called, and is invoked
+	 * immediately after OnPluginEnd(). The plugin may be in any state Failed
+	 * or lower.
+	 *
+	 * This function must not cause the plugin to re-enter script code. If
+	 * you wish to be notified of when a plugin is unloading, and to forbid
+	 * future calls on that plugin, use OnPluginWillUnload and use a
+	 * plugin property to block future calls.
+	 */
+	void OnPluginUnloaded(IPlugin* plugin) override;
+
+public: // IConCommandBaseAccessor
+	/* Flags is a combination of FCVAR flags in cvar.h.
+	 * hOut is filled in with a handle to the variable.
+	*/
+	bool RegisterConCommandBase(ConCommandBase* pVar) override;
+
 public:
 #if defined SMEXT_CONF_METAMOD
 	/**
@@ -77,20 +123,10 @@ public:
 #endif
 };
 
-// adapted from util_shared.h
-inline const CBaseEntity* UTIL_EntityFromEntityHandle(const IHandleEntity* pConstHandleEntity)
-{
-	IHandleEntity* pHandleEntity = const_cast<IHandleEntity*>(pConstHandleEntity);
-	IServerUnknown* pUnk = static_cast<IServerUnknown*>(pHandleEntity);
-
-	return pUnk->GetBaseEntity();
-}
+extern bool g_bLateLoad;
+extern bool g_bExtLoading;
 
 extern IForward* g_pCollisionFwd;
 extern IForward* g_pPassFwd;
-
-#ifdef SMEXT_ENABLE_ROOTCONSOLEMENU
-	extern IRootConsole* rootconsole;
-#endif
 
 #endif // _INCLUDE_COLLISIONHOOK_EXTENSION_H_
