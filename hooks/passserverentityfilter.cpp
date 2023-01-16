@@ -56,7 +56,7 @@ bool PassServerEntityFilter( const IHandleEntity *pTouch, const IHandleEntity *p
 DETOUR_DECL_STATIC2(PassServerEntityFilterFunc, bool, const IHandleEntity*, pTouch, const IHandleEntity*, pPass)
 {
 #ifdef PLATFORM_WINDOWS
-	// Can't call into SourcePawn off thread (left 4 dead 2 - windows crash fix).
+	// Can't call into SourcePawn off thread (left 4 dead2 and left 4 dead - windows crash fix).
 	// This function is called not only from the main thread, 
 	// which causes a server crash due to the fact that the sourcepawn does not support multithreading.
 	// I don't know about other games.
