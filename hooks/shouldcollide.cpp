@@ -53,14 +53,19 @@ void CShouldCollideHook::SetCollisionSolver(IPhysicsCollisionSolver* pSolver)
 
 #if SOURCE_ENGINE != SE_LEFT4DEAD2
 int CShouldCollideHook::VPhysics_ShouldCollide(IPhysicsObject* pObj1, IPhysicsObject* pObj2, void* pGameData1, void* pGameData2)
+{
+	cell_t iOriginalRet = SH_CALL(META_IFACEPTR(IPhysicsCollisionSolver), &IPhysicsCollisionSolver::ShouldCollide)(pObj1, pObj2, pGameData1, pGameData2);
+
 #else
 int CShouldCollideHook::VPhysics_ShouldCollide(IPhysicsObject* pObj1, IPhysicsObject* pObj2, void* pGameData1, void* pGameData2, \
 													const PhysicsCollisionRulesCache_t& objCache1, const PhysicsCollisionRulesCache_t& objCache2)
-#endif
 {
+	cell_t iOriginalRet = SH_CALL(META_IFACEPTR(IPhysicsCollisionSolver), &IPhysicsCollisionSolver::ShouldCollide)(pObj1, pObj2, pGameData1, pGameData2, objCache1, objCache2);
+
+#endif
 	if (pObj1 == pObj2)
 	{
-		RETURN_META_VALUE(MRES_IGNORED, 1); // self collisions aren't interesting
+		RETURN_META_VALUE(MRES_SUPERCEDE, iOriginalRet); // self collisions aren't interesting
 	}
 
 	cell_t iEnt1 = gamehelpers->EntityToBCompatRef(reinterpret_cast<CBaseEntity*>(pGameData1));
@@ -69,26 +74,19 @@ int CShouldCollideHook::VPhysics_ShouldCollide(IPhysicsObject* pObj1, IPhysicsOb
 	// Checking the pointer for zero is already inside function 'EntityToBCompatRef'
 	if (iEnt1 == INVALID_EHANDLE_INDEX || iEnt2 == INVALID_EHANDLE_INDEX)
 	{
-		RETURN_META_VALUE(MRES_IGNORED, 1); // we need two entities
+		RETURN_META_VALUE(MRES_SUPERCEDE, iOriginalRet); // we need two entities
 	}
 
 	// todo: do we want to fill result with with the game's result? perhaps the forward path is more performant...
-	cell_t bResult = 0;
+	cell_t iPlResult = iOriginalRet;
+
 	g_pCollisionFwd->PushCell(iEnt1);
 	g_pCollisionFwd->PushCell(iEnt2);
-	g_pCollisionFwd->PushCellByRef(&bResult);
+	g_pCollisionFwd->PushCellByRef(&iPlResult);
+	g_pCollisionFwd->Execute(NULL);
 
-	cell_t iPlRetValue = Pl_Continue;
-	g_pCollisionFwd->Execute(&iPlRetValue);
-
-	if (iPlRetValue > Pl_Continue)
-	{
-		// plugin wants to change the result
-		RETURN_META_VALUE(MRES_SUPERCEDE, (bResult == 1));
-	}
-
-	// otherwise, game decides
-	RETURN_META_VALUE(MRES_IGNORED, 0);
+	// If the plugin has changed the result, then we do not allow values other than 1 or 0 to be returned to the game
+	RETURN_META_VALUE(MRES_SUPERCEDE, (iPlResult != iOriginalRet) ? (iPlResult == 1) : iOriginalRet);
 }
 
 bool CShouldCollideHook::CreateHook(char* error, size_t maxlen, ISmmAPI* ismm)

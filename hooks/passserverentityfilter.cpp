@@ -3,6 +3,8 @@
 
 DETOUR_DECL_STATIC2(PassServerEntityFilterFunc, bool, const IHandleEntity*, pTouch, const IHandleEntity*, pPass)
 {
+	cell_t iOriginalRet = DETOUR_STATIC_CALL(PassServerEntityFilterFunc)(pTouch, pPass);
+
 #ifdef PLATFORM_WINDOWS
 	// Can't call into SourcePawn off thread (left 4 dead2 and left 4 dead - windows crash fix).
 	// This function is called not only from the main thread, 
@@ -10,13 +12,13 @@ DETOUR_DECL_STATIC2(PassServerEntityFilterFunc, bool, const IHandleEntity*, pTou
 	// I don't know about other games.
 	if (!ThreadInMainThread())
 	{
-		return DETOUR_STATIC_CALL(PassServerEntityFilterFunc)(pTouch, pPass);
+		return iOriginalRet;
 	}
 #endif
 
 	if (pTouch == pPass)
 	{
-		return DETOUR_STATIC_CALL(PassServerEntityFilterFunc)(pTouch, pPass); // self checks aren't interesting
+		return iOriginalRet; // self checks aren't interesting
 	}
 
 	cell_t iEnt1 = CPassServerEntityFilterHook::EntityFromEntityHandle(pTouch);
@@ -25,26 +27,19 @@ DETOUR_DECL_STATIC2(PassServerEntityFilterFunc, bool, const IHandleEntity*, pTou
 	// Checking the pointer for zero is already inside function 'EntityToBCompatRef'
 	if (iEnt1 == INVALID_EHANDLE_INDEX || iEnt2 == INVALID_EHANDLE_INDEX)
 	{
-		return DETOUR_STATIC_CALL(PassServerEntityFilterFunc)(pTouch, pPass); // we need both entities
+		return iOriginalRet; // we need both entities
 	}
 
 	// todo: do we want to fill result with with the game's result? perhaps the forward path is more performant...
-	cell_t bResult = 0;
+	cell_t iPlResult = iOriginalRet;
+
 	g_pPassFwd->PushCell(iEnt1);
 	g_pPassFwd->PushCell(iEnt2);
-	g_pPassFwd->PushCellByRef(&bResult);
+	g_pPassFwd->PushCellByRef(&iPlResult);
+	g_pPassFwd->Execute(NULL);
 
-	cell_t iPlRetValue = Pl_Continue;
-	g_pPassFwd->Execute(&iPlRetValue);
-
-	if (iPlRetValue > Pl_Continue)
-	{
-		// plugin wants to change the result
-		return (bResult == 1);
-	}
-
-	// otherwise, game decides
-	return DETOUR_STATIC_CALL(PassServerEntityFilterFunc)(pTouch, pPass);
+	// If the plugin has changed the result, then we do not allow values other than 1 or 0 to be returned to the game
+	return (iPlResult != iOriginalRet) ? (iPlResult == 1) : iOriginalRet;
 }
 
 cell_t CPassServerEntityFilterHook::EntityFromEntityHandle(const IHandleEntity* pHandleEntity)
