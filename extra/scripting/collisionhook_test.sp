@@ -18,6 +18,15 @@ ConVar
 	g_hDebugFlags = null,
 	g_hDebugMsgType = null;
 
+public Plugin myinfo = 
+{
+	name = "CollisionHook - Tester",
+	author = "A1m`",
+	description = "Testing the functionality of CollisionHook API.",
+	version = "2.0",
+	url = "https://github.com/L4D-Community/Collisionhook"
+};
+
 public void OnPluginStart()
 {
 	char sValue[16], sDescription[128];
