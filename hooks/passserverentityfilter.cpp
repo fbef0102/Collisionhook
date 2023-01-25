@@ -1,58 +1,6 @@
 #include "extension.h"
 #include "collisionhooks.h"
 
-/* SDK 2013
-
-//-----------------------------------------------------------------------------
-// Converts an IHandleEntity to an CBaseEntity
-//-----------------------------------------------------------------------------
-inline const CBaseEntity *EntityFromEntityHandle( const IHandleEntity *pConstHandleEntity )
-{
-	IHandleEntity *pHandleEntity = const_cast<IHandleEntity*>(pConstHandleEntity);
-
-#ifdef CLIENT_DLL
-	IClientUnknown *pUnk = (IClientUnknown*)pHandleEntity;
-	return pUnk->GetBaseEntity();
-#else
-	if ( staticpropmgr->IsStaticProp( pHandleEntity ) )
-		return NULL;
-
-	IServerUnknown *pUnk = (IServerUnknown*)pHandleEntity;
-	return pUnk->GetBaseEntity();
-#endif
-}
-
-//-----------------------------------------------------------------------------
-//
-// Shared client/server trace filter code
-//
-//-----------------------------------------------------------------------------
-bool PassServerEntityFilter( const IHandleEntity *pTouch, const IHandleEntity *pPass ) 
-{
-	if ( !pPass )
-		return true;
-
-	if ( pTouch == pPass )
-		return false;
-
-	const CBaseEntity *pEntTouch = EntityFromEntityHandle( pTouch );
-	const CBaseEntity *pEntPass = EntityFromEntityHandle( pPass );
-	if ( !pEntTouch || !pEntPass )
-		return true;
-
-	// don't clip against own missiles
-	if ( pEntTouch->GetOwnerEntity() == pEntPass )
-		return false;
-	
-	// don't clip against owner
-	if ( pEntPass->GetOwnerEntity() == pEntTouch )
-		return false;	
-
-
-	return true;
-}
-*/
-
 DETOUR_DECL_STATIC2(PassServerEntityFilterFunc, bool, const IHandleEntity*, pTouch, const IHandleEntity*, pPass)
 {
 #ifdef PLATFORM_WINDOWS
@@ -71,39 +19,61 @@ DETOUR_DECL_STATIC2(PassServerEntityFilterFunc, bool, const IHandleEntity*, pTou
 		return DETOUR_STATIC_CALL(PassServerEntityFilterFunc)(pTouch, pPass); // self checks aren't interesting
 	}
 
-	if (!pTouch || !pPass)
-	{
-		return DETOUR_STATIC_CALL(PassServerEntityFilterFunc)(pTouch, pPass); // need two valid entities
-	}
+	cell_t iEnt1 = CPassServerEntityFilterHook::EntityFromEntityHandle(pTouch);
+	cell_t iEnt2 = CPassServerEntityFilterHook::EntityFromEntityHandle(pPass);
 
-	CBaseEntity* pEnt1 = const_cast<CBaseEntity*>(UTIL_EntityFromEntityHandle(pTouch));
-	CBaseEntity* pEnt2 = const_cast<CBaseEntity*>(UTIL_EntityFromEntityHandle(pPass));
-
-	if (!pEnt1 || !pEnt2)
+	// Checking the pointer for zero is already inside function 'EntityToBCompatRef'
+	if (iEnt1 == INVALID_EHANDLE_INDEX || iEnt2 == INVALID_EHANDLE_INDEX)
 	{
 		return DETOUR_STATIC_CALL(PassServerEntityFilterFunc)(pTouch, pPass); // we need both entities
 	}
 
-	cell_t ent1 = gamehelpers->EntityToBCompatRef(pEnt1);
-	cell_t ent2 = gamehelpers->EntityToBCompatRef(pEnt2);
-
 	// todo: do we want to fill result with with the game's result? perhaps the forward path is more performant...
-	cell_t result = 0;
-	g_pPassFwd->PushCell(ent1);
-	g_pPassFwd->PushCell(ent2);
-	g_pPassFwd->PushCellByRef(&result);
+	cell_t bResult = 0;
+	g_pPassFwd->PushCell(iEnt1);
+	g_pPassFwd->PushCell(iEnt2);
+	g_pPassFwd->PushCellByRef(&bResult);
 
-	cell_t retValue = Pl_Continue;
-	g_pPassFwd->Execute(&retValue);
+	cell_t iPlRetValue = Pl_Continue;
+	g_pPassFwd->Execute(&iPlRetValue);
 
-	if (retValue > Pl_Continue)
+	if (iPlRetValue > Pl_Continue)
 	{
 		// plugin wants to change the result
-		return (result == 1);
+		return (bResult == 1);
 	}
 
 	// otherwise, game decides
 	return DETOUR_STATIC_CALL(PassServerEntityFilterFunc)(pTouch, pPass);
+}
+
+cell_t CPassServerEntityFilterHook::EntityFromEntityHandle(const IHandleEntity* pHandleEntity)
+{
+	//IHandleEntity* pHandleEntity = const_cast<IHandleEntity*>(pConstHandleEntity);
+
+	if (pHandleEntity == NULL)
+	{
+		return INVALID_EHANDLE_INDEX;
+	}
+
+	/*if (staticpropmgr->IsStaticProp(pHandleEntity))
+	{
+		return NULL;
+	}*/
+
+	CBaseHandle hndl = pHandleEntity->GetRefEHandle();
+
+	if (hndl == INVALID_EHANDLE_INDEX)
+	{
+		return INVALID_EHANDLE_INDEX;
+	}
+
+	if (hndl.GetEntryIndex() >= MAX_EDICTS)
+	{
+		return (hndl.ToInt() | (1 << 31));
+	}
+
+	return hndl.GetEntryIndex();
 }
 
 bool CPassServerEntityFilterHook::CreateHook(char* error, size_t maxlen)
@@ -163,3 +133,55 @@ void CPassServerEntityFilterHook::DisableHook()
 
 	m_bFilterDetourEnabled = false;
 }
+
+/* SDK 2013
+
+//-----------------------------------------------------------------------------
+// Converts an IHandleEntity to an CBaseEntity
+//-----------------------------------------------------------------------------
+inline const CBaseEntity *EntityFromEntityHandle( const IHandleEntity *pConstHandleEntity )
+{
+	IHandleEntity *pHandleEntity = const_cast<IHandleEntity*>(pConstHandleEntity);
+
+#ifdef CLIENT_DLL
+	IClientUnknown *pUnk = (IClientUnknown*)pHandleEntity;
+	return pUnk->GetBaseEntity();
+#else
+	if ( staticpropmgr->IsStaticProp( pHandleEntity ) )
+		return NULL;
+
+	IServerUnknown *pUnk = (IServerUnknown*)pHandleEntity;
+	return pUnk->GetBaseEntity();
+#endif
+}
+
+//-----------------------------------------------------------------------------
+//
+// Shared client/server trace filter code
+//
+//-----------------------------------------------------------------------------
+bool PassServerEntityFilter( const IHandleEntity *pTouch, const IHandleEntity *pPass )
+{
+	if ( !pPass )
+		return true;
+
+	if ( pTouch == pPass )
+		return false;
+
+	const CBaseEntity *pEntTouch = EntityFromEntityHandle( pTouch );
+	const CBaseEntity *pEntPass = EntityFromEntityHandle( pPass );
+	if ( !pEntTouch || !pEntPass )
+		return true;
+
+	// don't clip against own missiles
+	if ( pEntTouch->GetOwnerEntity() == pEntPass )
+		return false;
+
+	// don't clip against owner
+	if ( pEntPass->GetOwnerEntity() == pEntTouch )
+		return false;
+
+
+	return true;
+}
+*/

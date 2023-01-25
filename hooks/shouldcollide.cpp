@@ -63,30 +63,28 @@ int CShouldCollideHook::VPhysics_ShouldCollide(IPhysicsObject* pObj1, IPhysicsOb
 		RETURN_META_VALUE(MRES_IGNORED, 1); // self collisions aren't interesting
 	}
 
-	CBaseEntity* pEnt1 = reinterpret_cast<CBaseEntity*>(pGameData1);
-	CBaseEntity* pEnt2 = reinterpret_cast<CBaseEntity*>(pGameData2);
+	cell_t iEnt1 = gamehelpers->EntityToBCompatRef(reinterpret_cast<CBaseEntity*>(pGameData1));
+	cell_t iEnt2 = gamehelpers->EntityToBCompatRef(reinterpret_cast<CBaseEntity*>(pGameData2));
 
-	if (!pEnt1 || !pEnt2)
+	// Checking the pointer for zero is already inside function 'EntityToBCompatRef'
+	if (iEnt1 == INVALID_EHANDLE_INDEX || iEnt2 == INVALID_EHANDLE_INDEX)
 	{
 		RETURN_META_VALUE(MRES_IGNORED, 1); // we need two entities
 	}
 
-	cell_t ent1 = gamehelpers->EntityToBCompatRef(pEnt1);
-	cell_t ent2 = gamehelpers->EntityToBCompatRef(pEnt2);
-
 	// todo: do we want to fill result with with the game's result? perhaps the forward path is more performant...
-	cell_t result = 0;
-	g_pCollisionFwd->PushCell(ent1);
-	g_pCollisionFwd->PushCell(ent2);
-	g_pCollisionFwd->PushCellByRef(&result);
+	cell_t bResult = 0;
+	g_pCollisionFwd->PushCell(iEnt1);
+	g_pCollisionFwd->PushCell(iEnt2);
+	g_pCollisionFwd->PushCellByRef(&bResult);
 
-	cell_t retValue = Pl_Continue;
-	g_pCollisionFwd->Execute(&retValue);
+	cell_t iPlRetValue = Pl_Continue;
+	g_pCollisionFwd->Execute(&iPlRetValue);
 
-	if (retValue > Pl_Continue)
+	if (iPlRetValue > Pl_Continue)
 	{
 		// plugin wants to change the result
-		RETURN_META_VALUE(MRES_SUPERCEDE, result == 1);
+		RETURN_META_VALUE(MRES_SUPERCEDE, (bResult == 1));
 	}
 
 	// otherwise, game decides
@@ -161,12 +159,12 @@ void CShouldCollideHook::ShowErrorMessage(bool bPluginLoad)
 	// We call this function only after the plugin is loaded.
 	if (g_pSM)
 	{
-		g_pSM->LogError(myself, "Pointer g_pSolver is null!");
-		g_pSM->LogError(myself, "Extension 'CollisionHooks' loaded too late?!");
+		g_pSM->LogError(myself, "Pointer g_pSolver is NULL! Was this extension uploaded late?");
+		g_pSM->LogError(myself, "Forward 'CH_ShouldCollide' will not work on this map!");
 	}
 
-	Msg("Pointer g_pSolver is null!""\n");
-	Msg("Extension 'CollisionHooks' loaded too late?!""\n");
+	Msg("Pointer g_pSolver is NULL! Was this extension uploaded late?""\n");
+	Msg("Forward 'CH_ShouldCollide' will not work on this map!""\n");
 
 	m_bWarningMsgDisplayed = true;
 }

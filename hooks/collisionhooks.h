@@ -25,7 +25,7 @@ public:
 	{
 		return (m_iShouldCollideHookId != 0);
 	}
-
+	
 private:
 	IPhysicsEnvironment* CreateEnvironment();
 
@@ -62,6 +62,8 @@ public:
 	void EnableHook();
 	void DisableHook();
 
+	static cell_t EntityFromEntityHandle(const IHandleEntity* pHandleEntity);
+
 	inline bool IsHookEnabled()
 	{
 		return (m_bFilterDetourEnabled);
@@ -72,14 +74,5 @@ private:
 
 	bool m_bFilterDetourEnabled = false;
 };
-
-// adapted from util_shared.h
-inline const CBaseEntity* UTIL_EntityFromEntityHandle(const IHandleEntity* pConstHandleEntity)
-{
-	IHandleEntity* pHandleEntity = const_cast<IHandleEntity*>(pConstHandleEntity);
-	IServerUnknown* pUnk = static_cast<IServerUnknown*>(pHandleEntity);
-
-	return pUnk->GetBaseEntity();
-}
 
 #endif // _INCLUDE_CCOLLISIONHOOKS_H_
