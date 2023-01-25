@@ -135,6 +135,54 @@ CON_COMMAND(sm_collisionhook, "Shows current state of hooks in extension 'Collis
 
 	Msg("Hook 'CCollisionEvent::ShouldCollide' is currently %s! Number of active forwards: %d!""\n", (g_pShouldCollideHook.IsHookEnabled()) ? "enabled" : "disabled", g_pCollisionFwd->GetFunctionCount());
 	Msg("Hook 'PassServerEntityFilter' is currently %s! Number of active forwards: %d!""\n\n", (g_pPassServerEntityFilterHook.IsHookEnabled()) ? "enabled" : "disabled", g_pPassFwd->GetFunctionCount());
+
+	IPlugin* pPlugin = NULL;
+	IPluginContext* pCtx = NULL;
+	bool bIsActiveCollisionFwd = false;
+	bool bIsActivePassFwd = false;
+	
+	const char* cpCollisionFwdName = g_pCollisionFwd->GetForwardName();
+	const char* cpPassFwdName = g_pPassFwd->GetForwardName();
+
+	IPluginIterator* pIterator = plsys->GetPluginIterator();
+
+	while (pIterator->MorePlugins())
+	{
+		pPlugin = pIterator->GetPlugin();
+
+		if (pPlugin->GetStatus() != Plugin_Running)
+		{
+			pIterator->NextPlugin();
+			continue;
+		}
+
+		pCtx = pPlugin->GetBaseContext();
+		if (!pCtx)
+		{
+			pIterator->NextPlugin();
+			continue;
+		}
+
+		bIsActiveCollisionFwd = (pCtx->GetFunctionByName(cpCollisionFwdName) != NULL);
+		bIsActivePassFwd = (pCtx->GetFunctionByName(cpPassFwdName) != NULL);
+
+		if (bIsActiveCollisionFwd && bIsActivePassFwd)
+		{
+			Msg("Plugin %s uses forwards %s and %s!""\n\n", pPlugin->GetFilename(), cpCollisionFwdName, cpPassFwdName);
+		}
+		else if (bIsActiveCollisionFwd)
+		{
+			Msg("Plugin %s uses forward %s!""\n\n", pPlugin->GetFilename(), cpCollisionFwdName);
+		}
+		else if (bIsActivePassFwd)
+		{
+			Msg("Plugin %s uses forward %s!""\n\n", pPlugin->GetFilename(), cpPassFwdName);
+		}
+
+		pIterator->NextPlugin();
+	}
+
+	pIterator->Release();
 }
 
 bool CollisionHook::RegisterConCommandBase(ConCommandBase* pVar)
