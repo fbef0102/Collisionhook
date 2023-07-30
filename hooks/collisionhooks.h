@@ -75,4 +75,14 @@ private:
 	bool m_bFilterDetourEnabled = false;
 };
 
+#define DETOUR_DECL_STATIC2_FASTCALL(name, ret, p1type, p1name, p2type, p2name) \
+ret (__fastcall *name##_Actual)(p1type, p2type) = NULL; \
+ret __fastcall name(p1type p1name, p2type p2name)
+
+#if SOURCE_ENGINE == SE_CSGO && defined PLATFORM_WINDOWS
+#define DETOUR_FUNCTION DETOUR_DECL_STATIC2_FASTCALL
+#else
+#define DETOUR_FUNCTION DETOUR_DECL_STATIC2
+#endif
+
 #endif // _INCLUDE_CCOLLISIONHOOKS_H_
