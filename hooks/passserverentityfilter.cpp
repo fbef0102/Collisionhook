@@ -1,7 +1,7 @@
 #include "extension.h"
 #include "collisionhooks.h"
 
-DETOUR_FUNCTION(PassServerEntityFilterFunc, bool, const IHandleEntity*, pTouch, const IHandleEntity*, pPass)
+DETOUR_CUSTOM_STATIC2(PassServerEntityFilterFunc, bool, const IHandleEntity*, pTouch, const IHandleEntity*, pPass)
 {
 	cell_t iOriginalRet = DETOUR_STATIC_CALL(PassServerEntityFilterFunc)(pTouch, pPass);
 
