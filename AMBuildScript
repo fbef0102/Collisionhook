@@ -271,7 +271,7 @@ class ExtensionConfig(object):
     cxx.cflags += ['/Oy-']
 
   def configure_linux(self, cxx):
-    cxx.defines += ['_LINUX', 'POSIX']
+    cxx.defines += ['LINUX', '_LINUX', 'POSIX']
     cxx.linkflags += ['-Wl,--exclude-libs,ALL', '-lm']
     if cxx.vendor == 'gcc':
       cxx.linkflags += ['-static-libgcc']
@@ -418,8 +418,12 @@ class ExtensionConfig(object):
       if sdk.name in ['swarm', 'blade', 'insurgency', 'doi', 'csgo']:
         libs.append('interfaces')
       for lib in libs:
-        lib_path = os.path.join(sdk.path, 'lib', 'public', lib) + '.lib'
-        compiler.linkflags.append(compiler.Dep(lib_path))
+        if sdk.name in ["l4d", "l4d2", "csgo"]:
+          # l4d, l4d2, csgo - engines don't have 64-bit libs for windows
+          lib_path = os.path.join(sdk.path, "lib", "public", lib) + ".lib"
+        else:
+          lib_path = os.path.join(sdk.path, "lib", "public", "x86", lib) + ".lib"
+          compiler.linkflags.append(lib_path)
 
     for library in dynamic_libs:
       source_path = os.path.join(lib_folder, library)
