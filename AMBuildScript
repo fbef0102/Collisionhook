@@ -423,7 +423,7 @@ class ExtensionConfig(object):
           lib_path = os.path.join(sdk.path, "lib", "public", lib) + ".lib"
         else:
           lib_path = os.path.join(sdk.path, "lib", "public", "x86", lib) + ".lib"
-          compiler.linkflags.append(lib_path)
+        compiler.linkflags.append(lib_path)
 
     for library in dynamic_libs:
       source_path = os.path.join(lib_folder, library)
