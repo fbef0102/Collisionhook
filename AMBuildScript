@@ -377,8 +377,8 @@ class ExtensionConfig(object):
     if builder.target_platform == 'linux':
       if sdk.name == 'episode1':
         lib_folder = os.path.join(sdk.path, 'linux_sdk')
-      elif sdk.name in ['sdk2013', 'bms']:
-        lib_folder = os.path.join(sdk.path, 'lib', 'public', 'linux32')
+      elif sdk.name in ["tf2", "dods", "css", "hl2dm", "sdk2013", "bms"]:
+        lib_folder = os.path.join(sdk.path, "lib", "public", "linux")
       else:
         lib_folder = os.path.join(sdk.path, 'lib', 'linux')
     elif builder.target_platform == 'mac':
