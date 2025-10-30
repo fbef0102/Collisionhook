@@ -177,13 +177,11 @@ class ExtensionConfig(object):
       '-fno-rtti',
       '-fno-exceptions',
       '-fno-threadsafe-statics',
+      '-Wno-unknown-pragmas', # tf2 sdk
       '-Wno-non-virtual-dtor',
       '-Wno-overloaded-virtual',
       '-fvisibility-inlines-hidden',
     ]
-
-    if sdk.name in ['tf2']:
-      cxx.cxxflags += [ '-Wno-unknown-pragmas' ]
 
     cxx.linkflags += ['-m32']
 
