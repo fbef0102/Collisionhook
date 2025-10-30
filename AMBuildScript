@@ -181,6 +181,10 @@ class ExtensionConfig(object):
       '-Wno-overloaded-virtual',
       '-fvisibility-inlines-hidden',
     ]
+
+    if sdk.name in ['tf2']:
+      cxx.cxxflags += [ '-Wno-unknown-pragmas' ]
+
     cxx.linkflags += ['-m32']
 
     have_gcc = cxx.vendor == 'gcc'
